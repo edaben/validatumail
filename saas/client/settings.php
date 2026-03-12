@@ -23,68 +23,68 @@ $message_type = '';
 // Procesar cambios
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-    
+
     try {
         $db = SaasDatabase::getInstance();
-        
+
         if ($action === 'update_profile') {
             $name = sanitizeInput($_POST['name'] ?? '');
             $phone = sanitizeInput($_POST['phone'] ?? '');
             $company = sanitizeInput($_POST['company'] ?? '');
             $website = sanitizeInput($_POST['website'] ?? '');
-            
+
             if (empty($name)) {
                 throw new Exception('El nombre es obligatorio');
             }
-            
+
             $db->query(
                 "UPDATE clients SET name = ?, phone = ?, company = ?, website = ?, updated_at = NOW() WHERE id = ?",
                 [$name, $phone, $company, $website, $client_id]
             );
-            
+
             $_SESSION['client_name'] = $name;
-            
+
             $message = 'Perfil actualizado exitosamente';
             $message_type = 'success';
-            
+
         } elseif ($action === 'change_password') {
             $current_password = $_POST['current_password'] ?? '';
             $new_password = $_POST['new_password'] ?? '';
             $confirm_password = $_POST['confirm_password'] ?? '';
-            
+
             if (empty($current_password) || empty($new_password) || empty($confirm_password)) {
                 throw new Exception('Todos los campos de contraseña son obligatorios');
             }
-            
+
             if ($new_password !== $confirm_password) {
                 throw new Exception('Las contraseñas nuevas no coinciden');
             }
-            
+
             if (strlen($new_password) < 8) {
                 throw new Exception('La contraseña debe tener al menos 8 caracteres');
             }
-            
+
             // Verificar contraseña actual
             $current_client = $db->fetchOne(
                 "SELECT password_hash FROM clients WHERE id = ?",
                 [$client_id]
             );
-            
+
             if (!verifyPassword($current_password, $current_client['password_hash'])) {
                 throw new Exception('La contraseña actual es incorrecta');
             }
-            
+
             // Actualizar contraseña
             $new_hash = hashPassword($new_password);
             $db->query(
                 "UPDATE clients SET password_hash = ?, updated_at = NOW() WHERE id = ?",
                 [$new_hash, $client_id]
             );
-            
+
             $message = 'Contraseña cambiada exitosamente';
             $message_type = 'success';
         }
-        
+
     } catch (Exception $e) {
         $message = $e->getMessage();
         $message_type = 'error';
@@ -93,13 +93,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 try {
     $db = SaasDatabase::getInstance();
-    
+
     // Obtener datos actuales del cliente
     $client = $db->fetchOne(
         "SELECT * FROM clients WHERE id = ?",
         [$client_id]
     );
-    
+
 } catch (Exception $e) {
     $error_message = 'Error al cargar la configuración';
 }
@@ -107,6 +107,7 @@ try {
 
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -140,7 +141,7 @@ try {
 
         .sidebar-header {
             padding: 20px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .sidebar-header h2 {
@@ -161,8 +162,9 @@ try {
             border-left: 3px solid transparent;
         }
 
-        .nav-item:hover, .nav-item.active {
-            background: rgba(255,255,255,0.1);
+        .nav-item:hover,
+        .nav-item.active {
+            background: rgba(255, 255, 255, 0.1);
             border-left-color: white;
         }
 
@@ -177,14 +179,14 @@ try {
             background: white;
             padding: 20px 30px;
             border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             margin-bottom: 30px;
         }
 
         .card {
             background: white;
             border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             overflow: hidden;
             margin-bottom: 30px;
         }
@@ -262,6 +264,7 @@ try {
         }
     </style>
 </head>
+
 <body>
     <!-- Sidebar -->
     <div class="sidebar">
@@ -304,9 +307,9 @@ try {
 
         <!-- Messages -->
         <?php if (!empty($message)): ?>
-        <div class="alert alert-<?php echo $message_type; ?>">
-            <?php echo htmlspecialchars($message); ?>
-        </div>
+            <div class="alert alert-<?php echo $message_type; ?>">
+                <?php echo htmlspecialchars($message); ?>
+            </div>
         <?php endif; ?>
 
         <!-- Profile Settings -->
@@ -317,35 +320,35 @@ try {
             <div class="card-body">
                 <form method="POST">
                     <input type="hidden" name="action" value="update_profile">
-                    
+
                     <div class="form-group">
                         <label for="name">Nombre completo</label>
-                        <input type="text" id="name" name="name" class="form-control" 
-                               value="<?php echo htmlspecialchars($client['name']); ?>" required>
+                        <input type="text" id="name" name="name" class="form-control"
+                            value="<?php echo htmlspecialchars($client['name'] ?? ''); ?>" required>
                     </div>
 
                     <div class="form-group">
                         <label for="email">Email (no modificable)</label>
-                        <input type="email" class="form-control" 
-                               value="<?php echo htmlspecialchars($client['email']); ?>" readonly>
+                        <input type="email" class="form-control"
+                            value="<?php echo htmlspecialchars($client['email'] ?? ''); ?>" readonly>
                     </div>
 
                     <div class="form-group">
                         <label for="phone">Teléfono</label>
-                        <input type="text" id="phone" name="phone" class="form-control" 
-                               value="<?php echo htmlspecialchars($client['phone']); ?>">
+                        <input type="text" id="phone" name="phone" class="form-control"
+                            value="<?php echo htmlspecialchars($client['phone'] ?? ''); ?>">
                     </div>
 
                     <div class="form-group">
                         <label for="company">Empresa</label>
-                        <input type="text" id="company" name="company" class="form-control" 
-                               value="<?php echo htmlspecialchars($client['company']); ?>">
+                        <input type="text" id="company" name="company" class="form-control"
+                            value="<?php echo htmlspecialchars($client['company'] ?? ''); ?>">
                     </div>
 
                     <div class="form-group">
                         <label for="website">Sitio web principal</label>
-                        <input type="url" id="website" name="website" class="form-control" 
-                               value="<?php echo htmlspecialchars($client['website']); ?>">
+                        <input type="url" id="website" name="website" class="form-control"
+                            value="<?php echo htmlspecialchars($client['website'] ?? ''); ?>">
                     </div>
 
                     <button type="submit" class="btn btn-primary">💾 Actualizar Perfil</button>
@@ -361,22 +364,23 @@ try {
             <div class="card-body">
                 <form method="POST">
                     <input type="hidden" name="action" value="change_password">
-                    
+
                     <div class="form-group">
                         <label for="current_password">Contraseña actual</label>
-                        <input type="password" id="current_password" name="current_password" class="form-control" required>
+                        <input type="password" id="current_password" name="current_password" class="form-control"
+                            required>
                     </div>
 
                     <div class="form-group">
                         <label for="new_password">Nueva contraseña</label>
-                        <input type="password" id="new_password" name="new_password" class="form-control" 
-                               minlength="8" required>
+                        <input type="password" id="new_password" name="new_password" class="form-control" minlength="8"
+                            required>
                     </div>
 
                     <div class="form-group">
                         <label for="confirm_password">Confirmar nueva contraseña</label>
-                        <input type="password" id="confirm_password" name="confirm_password" class="form-control" 
-                               minlength="8" required>
+                        <input type="password" id="confirm_password" name="confirm_password" class="form-control"
+                            minlength="8" required>
                     </div>
 
                     <button type="submit" class="btn btn-primary">🔒 Cambiar Contraseña</button>
@@ -392,11 +396,15 @@ try {
             <div class="card-body">
                 <p><strong>Plan actual:</strong> <?php echo ucfirst($client['plan']); ?></p>
                 <p><strong>Estado:</strong> <?php echo ucfirst($client['status']); ?></p>
-                <p><strong>Uso mensual:</strong> <?php echo number_format($client['monthly_usage']); ?> / <?php echo $client['monthly_limit'] == -1 ? '∞' : number_format($client['monthly_limit']); ?></p>
+                <p><strong>Uso mensual:</strong> <?php echo number_format($client['monthly_usage']); ?> /
+                    <?php echo $client['monthly_limit'] == -1 ? '∞' : number_format($client['monthly_limit']); ?></p>
                 <p><strong>Miembro desde:</strong> <?php echo date('d/m/Y', strtotime($client['created_at'])); ?></p>
-                <p><strong>Último acceso:</strong> <?php echo $client['last_login'] ? date('d/m/Y H:i', strtotime($client['last_login'])) : 'Nunca'; ?></p>
+                <p><strong>Último acceso:</strong>
+                    <?php echo $client['last_login'] ? date('d/m/Y H:i', strtotime($client['last_login'])) : 'Nunca'; ?>
+                </p>
             </div>
         </div>
     </div>
 </body>
+
 </html>
