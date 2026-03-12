@@ -21,7 +21,7 @@ class SaasDatabase
     private function __construct()
     {
         $this->host = getenv('DB_HOST') ?: 'localhost';
-        $this->dbname = getenv('DB_NAME') ?: 'geocontrol_saasvalidamail';
+        $this->dbname = getenv('DB_NAME') ?: 'validamail';
         $this->username = getenv('DB_USER') ?: 'validamail';
         $this->password = getenv('DB_PASSWORD') ?: 'Rastro@2228';
 
