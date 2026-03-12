@@ -1,0 +1,7 @@
+{
+    "name": "edaben/validatumail",
+    "description": "Validacion de correos SaaS",
+    "require": {
+        "php": ">=8.1"
+    }
+}
