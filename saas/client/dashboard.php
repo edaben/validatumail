@@ -15,50 +15,58 @@ if (!isset($_SESSION['client_id'])) {
 
 $client_id = $_SESSION['client_id'];
 
+$client_name = $_SESSION['client_name'] ?? 'Usuario';
+$client_plan = $_SESSION['client_plan'] ?? 'free';
+$monthly_usage = 0;
+$websites = [];
+$access_stats = [];
+$plan_limits = ['monthly_limit' => 0, 'websites_limit' => 0];
+$usage_percentage = 0;
+
 try {
     $db = SaasDatabase::getInstance();
-    
+
     // Obtener datos del cliente SIEMPRE de la BD (no de sesión)
     $client = $db->fetchOne(
         "SELECT * FROM clients WHERE id = ?",
         [$client_id]
     );
-    
+
     if (!$client) {
         session_destroy();
         redirectToLogin('Sesión inválida');
     }
-    
+
     // Actualizar sesión con datos frescos de la BD
     $_SESSION['client_name'] = $client['name'];
     $_SESSION['client_plan'] = $client['plan'];
     $_SESSION['client_email'] = $client['email'];
-    
+
     // Usar datos de la BD (no de sesión)
     $client_name = $client['name'];
     $client_plan = $client['plan'];
-    
+
     // Obtener sitios web del cliente
     $websites = $db->fetchAll(
         "SELECT * FROM client_websites WHERE client_id = ? ORDER BY created_at DESC",
         [$client_id]
     );
-    
+
     // Obtener uso mensual actual (de todas las tablas)
     $api_usage = $db->fetchOne(
         "SELECT COUNT(*) as count FROM api_requests
          WHERE client_id = ? AND MONTH(created_at) = MONTH(NOW()) AND YEAR(created_at) = YEAR(NOW())",
         [$client_id]
     )['count'];
-    
+
     $access_usage = $db->fetchOne(
         "SELECT COUNT(*) as count FROM access_logs
          WHERE client_id = ? AND MONTH(created_at) = MONTH(NOW()) AND YEAR(created_at) = YEAR(NOW())",
         [$client_id]
     )['count'];
-    
+
     $monthly_usage = $api_usage + $access_usage;
-    
+
     // Obtener estadísticas de acceso del mes desde access_logs
     $access_stats = $db->fetchAll(
         "SELECT access_result, COUNT(*) as count
@@ -67,7 +75,7 @@ try {
          GROUP BY access_result",
         [$client_id]
     );
-    
+
     // Obtener países más visitados
     $country_stats = $db->fetchAll(
         "SELECT country_code, country_name, access_result, COUNT(*) as count
@@ -79,25 +87,26 @@ try {
          LIMIT 10",
         [$client_id]
     );
-    
+
     // Calcular porcentaje de uso
     $plan_limits = getPlanLimits($client['plan']);
-    $usage_percentage = $plan_limits['monthly_limit'] > 0 
-        ? round(($monthly_usage / $plan_limits['monthly_limit']) * 100, 1) 
+    $usage_percentage = $plan_limits['monthly_limit'] > 0
+        ? round(($monthly_usage / $plan_limits['monthly_limit']) * 100, 1)
         : 0;
-    
+
 } catch (Exception $e) {
     logActivity('error', 'Error al cargar dashboard', [
         'error' => $e->getMessage(),
         'client_id' => $client_id
     ], $client_id);
-    
-    $error_message = 'Error al cargar el dashboard. Por favor, recarga la página.';
+
+    $error_message = 'Error al cargar el dashboard: ' . $e->getMessage();
 }
 ?>
 
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -131,7 +140,7 @@ try {
 
         .sidebar-header {
             padding: 20px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .sidebar-header h2 {
@@ -157,8 +166,9 @@ try {
             border-left: 3px solid transparent;
         }
 
-        .nav-item:hover, .nav-item.active {
-            background: rgba(255,255,255,0.1);
+        .nav-item:hover,
+        .nav-item.active {
+            background: rgba(255, 255, 255, 0.1);
             border-left-color: white;
         }
 
@@ -178,7 +188,7 @@ try {
             background: white;
             padding: 20px 30px;
             border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             margin-bottom: 30px;
             display: flex;
             justify-content: space-between;
@@ -204,10 +214,25 @@ try {
             text-transform: uppercase;
         }
 
-        .plan-free { background: #e9ecef; color: #495057; }
-        .plan-basic { background: #d4edda; color: #155724; }
-        .plan-premium { background: #d1ecf1; color: #0c5460; }
-        .plan-enterprise { background: #f8d7da; color: #721c24; }
+        .plan-free {
+            background: #e9ecef;
+            color: #495057;
+        }
+
+        .plan-basic {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .plan-premium {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .plan-enterprise {
+            background: #f8d7da;
+            color: #721c24;
+        }
 
         .logout-btn {
             background: #dc3545;
@@ -236,7 +261,7 @@ try {
             background: white;
             padding: 25px;
             border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             position: relative;
             overflow: hidden;
         }
@@ -250,10 +275,21 @@ try {
             height: 4px;
         }
 
-        .stat-card.usage::before { background: #667eea; }
-        .stat-card.websites::before { background: #28a745; }
-        .stat-card.allowed::before { background: #17a2b8; }
-        .stat-card.blocked::before { background: #dc3545; }
+        .stat-card.usage::before {
+            background: #667eea;
+        }
+
+        .stat-card.websites::before {
+            background: #28a745;
+        }
+
+        .stat-card.allowed::before {
+            background: #17a2b8;
+        }
+
+        .stat-card.blocked::before {
+            background: #dc3545;
+        }
 
         .stat-header {
             display: flex;
@@ -312,7 +348,7 @@ try {
         .card {
             background: white;
             border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             overflow: hidden;
         }
 
@@ -437,7 +473,7 @@ try {
 
         .action-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
         }
 
         .action-icon {
@@ -486,6 +522,7 @@ try {
         }
     </style>
 </head>
+
 <body>
     <!-- Sidebar -->
     <div class="sidebar">
@@ -522,9 +559,9 @@ try {
     <!-- Main Content -->
     <div class="main-content">
         <?php if (isset($error_message)): ?>
-        <div class="alert alert-error">
-            <?php echo htmlspecialchars($error_message); ?>
-        </div>
+            <div class="alert alert-error">
+                <?php echo htmlspecialchars($error_message); ?>
+            </div>
         <?php endif; ?>
 
         <!-- Header -->
@@ -533,7 +570,7 @@ try {
                 <h1>¡Hola, <?php echo htmlspecialchars($client_name); ?>! 👋</h1>
                 <p>Bienvenido a tu panel de control de GeoControl SaaS</p>
             </div>
-            
+
             <div class="user-info">
                 <span class="plan-badge plan-<?php echo $client_plan; ?>">
                     Plan <?php echo ucfirst($client_plan); ?>
@@ -551,12 +588,14 @@ try {
                 </div>
                 <div class="stat-number"><?php echo number_format($monthly_usage); ?></div>
                 <div class="stat-label">
-                    de <?php echo $plan_limits['monthly_limit'] == -1 ? '∞' : number_format($plan_limits['monthly_limit']); ?> validaciones
+                    de
+                    <?php echo $plan_limits['monthly_limit'] == -1 ? '∞' : number_format($plan_limits['monthly_limit']); ?>
+                    validaciones
                 </div>
                 <?php if ($plan_limits['monthly_limit'] > 0): ?>
-                <div class="usage-bar">
-                    <div class="usage-fill" style="width: <?php echo min($usage_percentage, 100); ?>%"></div>
-                </div>
+                    <div class="usage-bar">
+                        <div class="usage-fill" style="width: <?php echo min($usage_percentage, 100); ?>%"></div>
+                    </div>
                 <?php endif; ?>
             </div>
 
@@ -567,7 +606,8 @@ try {
                 </div>
                 <div class="stat-number"><?php echo count($websites); ?></div>
                 <div class="stat-label">
-                    de <?php echo $plan_limits['websites_limit'] == -1 ? '∞' : $plan_limits['websites_limit']; ?> permitidos
+                    de <?php echo $plan_limits['websites_limit'] == -1 ? '∞' : $plan_limits['websites_limit']; ?>
+                    permitidos
                 </div>
             </div>
 
@@ -597,7 +637,7 @@ try {
                     <span class="stat-icon">🚫</span>
                 </div>
                 <div class="stat-number">
-                    <?php 
+                    <?php
                     $blocked_count = 0;
                     foreach ($access_stats as $stat) {
                         if ($stat['access_result'] === 'denied') {
@@ -624,29 +664,31 @@ try {
                     <?php if (empty($websites)): ?>
                         <p style="text-align: center; color: #666; padding: 20px;">
                             🌐 Aún no has agregado ningún sitio web.<br>
-                            <a href="websites.php" class="btn btn-primary" style="margin-top: 10px;">Agregar Primer Sitio</a>
+                            <a href="websites.php" class="btn btn-primary" style="margin-top: 10px;">Agregar Primer
+                                Sitio</a>
                         </p>
                     <?php else: ?>
                         <?php foreach (array_slice($websites, 0, 3) as $website): ?>
-                        <div class="website-item">
-                            <div class="website-info">
-                                <div class="website-domain"><?php echo htmlspecialchars($website['domain']); ?></div>
-                                <div class="website-status">
-                                    Agregado el <?php echo date('d/m/Y', strtotime($website['created_at'])); ?>
+                            <div class="website-item">
+                                <div class="website-info">
+                                    <div class="website-domain"><?php echo htmlspecialchars($website['domain']); ?></div>
+                                    <div class="website-status">
+                                        Agregado el <?php echo date('d/m/Y', strtotime($website['created_at'])); ?>
+                                    </div>
                                 </div>
+                                <span
+                                    class="status-badge <?php echo $website['is_active'] ? 'status-active' : 'status-inactive'; ?>">
+                                    <?php echo $website['is_active'] ? 'Activo' : 'Inactivo'; ?>
+                                </span>
                             </div>
-                            <span class="status-badge <?php echo $website['is_active'] ? 'status-active' : 'status-inactive'; ?>">
-                                <?php echo $website['is_active'] ? 'Activo' : 'Inactivo'; ?>
-                            </span>
-                        </div>
                         <?php endforeach; ?>
-                        
+
                         <?php if (count($websites) > 3): ?>
-                        <div style="text-align: center; margin-top: 15px;">
-                            <a href="websites.php" class="btn btn-info btn-sm">
-                                Ver todos (<?php echo count($websites); ?>)
-                            </a>
-                        </div>
+                            <div style="text-align: center; margin-top: 15px;">
+                                <a href="websites.php" class="btn btn-info btn-sm">
+                                    Ver todos (<?php echo count($websites); ?>)
+                                </a>
+                            </div>
                         <?php endif; ?>
                     <?php endif; ?>
                 </div>
@@ -664,19 +706,19 @@ try {
                             <strong>Agregar Sitio</strong>
                             <p>Proteger nuevo sitio web</p>
                         </a>
-                        
+
                         <a href="countries.php" class="action-card">
                             <div class="action-icon">🌍</div>
                             <strong>Configurar Países</strong>
                             <p>Permitir/bloquear países</p>
                         </a>
-                        
+
                         <a href="code_generator.php" class="action-card">
                             <div class="action-icon">📋</div>
                             <strong>Generar Código</strong>
                             <p>Obtener código JS</p>
                         </a>
-                        
+
                         <a href="statistics.php" class="action-card">
                             <div class="action-icon">📈</div>
                             <strong>Ver Estadísticas</strong>
@@ -689,32 +731,32 @@ try {
 
         <!-- Usage Warning -->
         <?php if ($usage_percentage >= 80 && $plan_limits['monthly_limit'] > 0): ?>
-        <div class="card" style="border-left: 4px solid #dc3545;">
-            <div class="card-body">
-                <h4 style="color: #dc3545; margin-bottom: 10px;">⚠️ Aviso de Uso</h4>
-                <p>Has usado el <strong><?php echo $usage_percentage; ?>%</strong> de tu límite mensual. 
-                <?php if ($usage_percentage >= 100): ?>
-                    Tu servicio está temporalmente limitado.
-                <?php endif; ?>
-                </p>
-                <a href="billing.php" class="btn btn-primary" style="margin-top: 10px;">
-                    Actualizar Plan
-                </a>
+            <div class="card" style="border-left: 4px solid #dc3545;">
+                <div class="card-body">
+                    <h4 style="color: #dc3545; margin-bottom: 10px;">⚠️ Aviso de Uso</h4>
+                    <p>Has usado el <strong><?php echo $usage_percentage; ?>%</strong> de tu límite mensual.
+                        <?php if ($usage_percentage >= 100): ?>
+                            Tu servicio está temporalmente limitado.
+                        <?php endif; ?>
+                    </p>
+                    <a href="billing.php" class="btn btn-primary" style="margin-top: 10px;">
+                        Actualizar Plan
+                    </a>
+                </div>
             </div>
-        </div>
         <?php endif; ?>
     </div>
 
     <script>
         // Auto-refresh stats every 30 seconds
-        setInterval(function() {
+        setInterval(function () {
             // Solo refrescar las estadísticas, no toda la página
             fetch(window.location.href + '?ajax=stats')
                 .then(response => response.json())
                 .then(data => {
                     // Actualizar números de estadísticas
                     if (data.monthly_usage !== undefined) {
-                        document.querySelector('.stat-card.usage .stat-number').textContent = 
+                        document.querySelector('.stat-card.usage .stat-number').textContent =
                             new Intl.NumberFormat().format(data.monthly_usage);
                     }
                 })
@@ -737,4 +779,5 @@ try {
         }
     </script>
 </body>
+
 </html>
