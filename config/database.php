@@ -11,15 +11,20 @@ class SaasDatabase
     private static $instance = null;
     private $connection;
     
-    // Configuración de la base de datos
-    private $host = 'localhost';
-    private $dbname = 'geocontrol_saas';
-    private $username = 'geocontrol_saas';
-    private $password = 'Rastro@2228';
+    // Configuración de la base de datos (usando variables de entorno o valores por defecto)
+    private $host;
+    private $dbname;
+    private $username;
+    private $password;
     private $charset = 'utf8mb4';
     
     private function __construct() 
     {
+        $this->host = getenv('DB_HOST') ?: 'localhost';
+        $this->dbname = getenv('DB_NAME') ?: 'geocontrol_saas';
+        $this->username = getenv('DB_USER') ?: 'geocontrol_saas';
+        $this->password = getenv('DB_PASSWORD') ?: 'Rastro@2228';
+
         $dsn = "mysql:host={$this->host};dbname={$this->dbname};charset={$this->charset}";
         
         $options = [
