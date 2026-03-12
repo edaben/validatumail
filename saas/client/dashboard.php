@@ -82,7 +82,7 @@ try {
          FROM access_logs
          WHERE client_id = ? AND MONTH(created_at) = MONTH(NOW()) AND YEAR(created_at) = YEAR(NOW())
          AND country_code IS NOT NULL
-         GROUP BY country_code, access_result
+         GROUP BY country_code, country_name, access_result
          ORDER BY count DESC
          LIMIT 10",
         [$client_id]
