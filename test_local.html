@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba Local de Control de Acceso por Geolocalización</title>
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            display: none;
+        }
+        .info-panel {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            border-left: 4px solid #3498db;
+        }
+        .geo-data {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            border-left: 4px solid #2ecc71;
+        }
+        pre {
+            background-color: #f1f1f1;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .access-denied-message {
+            background-color: #e74c3c;
+            color: white;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .debug-log {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Prueba Local de Control de Acceso por Geolocalización</h1>
+    
+    <div class="info-panel">
+        <h2>Información</h2>
+        <p>Esta página de prueba demuestra el sistema de control de acceso basado en geolocalización en modo local. 
+        Simula diferentes países para probar el bloqueo de formularios.</p>
+        
+        <h3>Configuración de Prueba:</h3>
+        <label for="testCountry">Simular país:</label>
+        <select id="testCountry" style="margin-bottom: 10px; padding: 5px;">
+            <option value="EC">Ecuador (Permitido)</option>
+            <option value="US">Estados Unidos (Permitido)</option>
+            <option value="ES">España (Permitido)</option>
+            <option value="MX">México (Permitido)</option>
+            <option value="RU">Rusia (Bloqueado)</option>
+            <option value="CN">China (Bloqueado)</option>
+            <option value="IR">Irán (Bloqueado)</option>
+        </select>
+        <button id="applyTest" style="margin-left: 10px;">Aplicar Test</button>
+    </div>
+    
+    <form id="testForm">
+        <div class="form-group">
+            <label for="firstName">Nombre:</label>
+            <input type="text" id="firstName" name="firstName" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="lastName">Apellido:</label>
+            <input type="text" id="lastName" name="lastName" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="email">Correo Electrónico:</label>
+            <input type="email" id="email" name="email" required>
+        </div>
+        
+        <button type="submit" id="submitBtn">Enviar</button>
+    </form>
+    
+    <div id="result" class="result"></div>
+    
+    <div class="geo-data">
+        <h2>Datos de Geolocalización Simulados</h2>
+        <pre id="geoDataDisplay">Configurando simulación...</pre>
+        
+        <div style="margin-top: 20px;">
+            <button id="toggleDebug" style="background-color: #f39c12;">Mostrar/Ocultar Debug</button>
+        </div>
+        
+        <div id="debugLog" class="debug-log" style="display: none;"></div>
+    </div>
+
+    <script>
+        // Configuración simulada basada en .env
+        const CONFIG = {
+            ACCESS_CONTROL_MODE: 'allowed',
+            COUNTRIES_ALLOWED: ['AR', 'BO', 'CL', 'CO', 'CR', 'CU', 'DO', 'ES', 'GQ', 'GT', 'HN', 'MX', 'NI', 'PA', 'PE', 'PY', 'SV', 'UY', 'VE', 'US', 'CA', 'EC'],
+            COUNTRIES_DENIED: ['RU', 'CN', 'IR', 'KP'],
+            ACCESS_DENIED_ACTION: 'block_forms',
+            ALLOW_VPN: 'no',
+            ALLOW_TOR: 'no',
+            ALLOW_PROXY: 'no',
+            ALLOW_HOSTING: 'no'
+        };
+
+        // Datos simulados de países
+        const COUNTRY_DATA = {
+            'EC': { country: 'Ecuador', country_code: 'EC', city: 'Quito', ip: '190.152.1.1' },
+            'US': { country: 'United States', country_code: 'US', city: 'New York', ip: '8.8.8.8' },
+            'ES': { country: 'Spain', country_code: 'ES', city: 'Madrid', ip: '85.55.1.1' },
+            'MX': { country: 'Mexico', country_code: 'MX', city: 'Mexico City', ip: '201.131.1.1' },
+            'RU': { country: 'Russia', country_code: 'RU', city: 'Moscow', ip: '5.255.1.1' },
+            'CN': { country: 'China', country_code: 'CN', city: 'Beijing', ip: '1.2.3.4' },
+            'IR': { country: 'Iran', country_code: 'IR', city: 'Tehran', ip: '5.1.1.1' }
+        };
+
+        // Variable para almacenar estado actual
+        let currentGeoData = null;
+        let debugMessages = [];
+
+        // Función de debug
+        function debugLog(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${message}`;
+            debugMessages.push(logMessage);
+            console.log(logMessage);
+            
+            // Actualizar el panel de debug si está visible
+            const debugPanel = document.getElementById('debugLog');
+            if (debugPanel.style.display !== 'none') {
+                debugPanel.innerHTML = debugMessages.slice(-20).join('\n');
+                debugPanel.scrollTop = debugPanel.scrollHeight;
+            }
+        }
+
+        // Función para simular geolocalización
+        function simulateGeolocation(countryCode) {
+            debugLog(`Simulando geolocalización para país: ${countryCode}`);
+            
+            const data = COUNTRY_DATA[countryCode];
+            if (!data) {
+                debugLog(`Error: Datos no encontrados para país ${countryCode}`);
+                return null;
+            }
+
+            // Determinar si se permite el acceso
+            let accessAllowed = false;
+            if (CONFIG.ACCESS_CONTROL_MODE === 'allowed') {
+                accessAllowed = CONFIG.COUNTRIES_ALLOWED.includes(countryCode);
+                debugLog(`Modo permitidos: ¿${countryCode} está en lista permitidos? ${accessAllowed}`);
+            } else {
+                accessAllowed = !CONFIG.COUNTRIES_DENIED.includes(countryCode);
+                debugLog(`Modo denegados: ¿${countryCode} está en lista denegados? ${!accessAllowed}`);
+            }
+
+            // Crear datos completos
+            const geoData = {
+                ...data,
+                access_allowed: accessAllowed,
+                access_decision_reason: CONFIG.ACCESS_CONTROL_MODE === 'allowed' 
+                    ? `País ${accessAllowed ? "permitido" : "no permitido"} en la lista de permitidos`
+                    : `País ${accessAllowed ? "no" : ""} en la lista de denegados`,
+                timestamp: new Date().toISOString()
+            };
+
+            debugLog(`Resultado de acceso: ${accessAllowed ? 'PERMITIDO' : 'DENEGADO'}`);
+            debugLog(`Razón: ${geoData.access_decision_reason}`);
+
+            return geoData;
+        }
+
+        // Función para manejar formularios
+        function handleForms(geoData) {
+            debugLog('Manejando formularios...');
+            
+            const form = document.getElementById('testForm');
+            const submitBtn = document.getElementById('submitBtn');
+            
+            // Limpiar mensajes anteriores
+            const existingMessages = document.querySelectorAll('.access-denied-message');
+            existingMessages.forEach(msg => msg.remove());
+
+            if (!geoData.access_allowed) {
+                debugLog('Acceso denegado - Deshabilitando formulario');
+                
+                // Deshabilitar todos los inputs
+                const inputs = form.querySelectorAll('input, select, textarea');
+                inputs.forEach(input => {
+                    input.disabled = true;
+                    input.style.backgroundColor = '#f5f5f5';
+                });
+                
+                // Deshabilitar el botón
+                submitBtn.disabled = true;
+                
+                // Añadir mensaje de acceso denegado
+                const message = document.createElement('div');
+                message.className = 'access-denied-message';
+                message.textContent = `Acceso denegado desde ${geoData.country}. ${geoData.access_decision_reason}`;
+                
+                // Insertar mensaje después del botón
+                submitBtn.parentNode.insertBefore(message, submitBtn.nextSibling);
+                
+            } else {
+                debugLog('Acceso permitido - Habilitando formulario');
+                
+                // Habilitar todos los inputs
+                const inputs = form.querySelectorAll('input, select, textarea');
+                inputs.forEach(input => {
+                    input.disabled = false;
+                    input.style.backgroundColor = '';
+                });
+                
+                // Habilitar el botón
+                submitBtn.disabled = false;
+            }
+        }
+
+        // Función para mostrar datos de geolocalización
+        function displayGeoData(geoData) {
+            const display = document.getElementById('geoDataDisplay');
+            
+            const displayData = {
+                ip: geoData.ip,
+                country: geoData.country,
+                country_code: geoData.country_code,
+                city: geoData.city,
+                access_allowed: geoData.access_allowed,
+                access_decision_reason: geoData.access_decision_reason,
+                timestamp: geoData.timestamp
+            };
+            
+            display.textContent = JSON.stringify(displayData, null, 2);
+        }
+
+        // Función para aplicar test
+        function applyTest() {
+            const selectedCountry = document.getElementById('testCountry').value;
+            debugLog(`=== INICIANDO TEST PARA ${selectedCountry} ===`);
+            
+            // Simular geolocalización
+            currentGeoData = simulateGeolocation(selectedCountry);
+            
+            if (currentGeoData) {
+                // Mostrar datos
+                displayGeoData(currentGeoData);
+                
+                // Manejar formularios
+                handleForms(currentGeoData);
+                
+                debugLog('=== TEST COMPLETADO ===');
+            } else {
+                debugLog('Error: No se pudieron generar datos de geolocalización');
+            }
+        }
+
+        // Event Listeners
+        document.getElementById('applyTest').addEventListener('click', applyTest);
+        
+        document.getElementById('testForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (currentGeoData && currentGeoData.access_allowed) {
+                document.getElementById('result').style.display = 'block';
+                document.getElementById('result').innerHTML = '✅ ¡Formulario enviado correctamente desde ' + currentGeoData.country + '!';
+                debugLog('Formulario enviado exitosamente');
+            } else {
+                debugLog('Intento de envío bloqueado');
+            }
+        });
+        
+        document.getElementById('toggleDebug').addEventListener('click', function() {
+            const debugPanel = document.getElementById('debugLog');
+            if (debugPanel.style.display === 'none') {
+                debugPanel.style.display = 'block';
+                debugPanel.innerHTML = debugMessages.slice(-20).join('\n');
+                debugPanel.scrollTop = debugPanel.scrollHeight;
+            } else {
+                debugPanel.style.display = 'none';
+            }
+        });
+
+        // Inicialización
+        window.addEventListener('load', function() {
+            debugLog('Página cargada - Iniciando simulación');
+            debugLog('Configuración cargada:');
+            debugLog(`- Modo: ${CONFIG.ACCESS_CONTROL_MODE}`);
+            debugLog(`- Países permitidos: ${CONFIG.COUNTRIES_ALLOWED.join(', ')}`);
+            debugLog(`- Países denegados: ${CONFIG.COUNTRIES_DENIED.join(', ')}`);
+            
+            // Aplicar test inicial con Ecuador
+            applyTest();
+        });
+    </script>
+</body>
+</html>

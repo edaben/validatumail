@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba de Control de Acceso por Geolocalización</title>
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            display: none;
+        }
+        .info-panel {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            border-left: 4px solid #3498db;
+        }
+        .geo-data {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            border-left: 4px solid #2ecc71;
+        }
+        pre {
+            background-color: #f1f1f1;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Prueba de Control de Acceso por Geolocalización</h1>
+    
+    <div class="info-panel">
+        <h2>Información</h2>
+        <p>Esta página de prueba demuestra el sistema de control de acceso basado en geolocalización. Si su país está bloqueado, debería ser redirigido a una página de acceso denegado. Si su país está permitido pero los formularios están bloqueados, verá el formulario con campos desactivados.</p>
+    </div>
+    
+    <form id="testForm">
+        <div class="form-group">
+            <label for="firstName">Nombre:</label>
+            <input type="text" id="firstName" name="firstName" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="lastName">Apellido:</label>
+            <input type="text" id="lastName" name="lastName" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="email">Correo Electrónico:</label>
+            <input type="email" id="email" name="email" required>
+        </div>
+        
+        <button type="submit">Enviar</button>
+    </form>
+    
+    <div id="result" class="result"></div>
+    
+    <div class="geo-data">
+        <h2>Datos de Geolocalización</h2>
+        <p>A continuación se muestran los datos de geolocalización detectados para su dirección IP:</p>
+        <pre id="geoDataDisplay">Cargando datos...</pre>
+        
+        <div style="margin-top: 20px;">
+            <button id="reloadData" style="margin-right: 10px;">Recargar Datos</button>
+            <button id="clearCache" style="background-color: #e74c3c;">Limpiar Caché</button>
+            <button id="forceRefresh" style="background-color: #f39c12; margin-left: 10px;">Forzar Actualización</button>
+        </div>
+        
+        <div id="accessInfo" style="margin-top: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 4px; border-left: 4px solid #e74c3c; display: none;">
+            <h3>Información de Acceso</h3>
+            <p id="accessStatus"></p>
+            <p id="accessReason"></p>
+        </div>
+        
+        <div style="margin-top: 30px;">
+            <h3>IPs Almacenadas en Caché</h3>
+            <p>El sistema almacena datos para múltiples IPs para evitar llamadas innecesarias a la API:</p>
+            <div id="cachedIPs" style="margin-top: 10px;"></div>
+        </div>
+        
+        <h3>Probar con otra IP</h3>
+        <p>Para probar con una IP diferente, añada <code>?test_ip=XXX.XXX.XXX.XXX</code> a la URL de la API.</p>
+    </div>
+    
+    <!-- Definir DEBUG_MODE primero -->
+    <script>
+        const DEBUG_MODE = true;
+    </script>
+    
+    <!-- Incluir el script direct_geo.js directamente -->
+    <script src="direct_geo.js" charset="UTF-8"></script>
+    
+    <script>
+        // Manejador simple de envío de formulario para pruebas
+        document.getElementById('testForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            document.getElementById('result').style.display = 'block';
+            document.getElementById('result').innerHTML = '¡Formulario enviado correctamente!';
+        });
+        
+        // Función para mostrar los datos de geolocalización usando direct_geo.js
+        function displayGeoData() {
+            // Mostrar mensaje de carga
+            document.getElementById('geoDataDisplay').textContent = 'Cargando datos...';
+            
+            // Verificar si window.directGeo está disponible
+            if (typeof window.directGeo === 'undefined') {
+                console.log('DEBUG - Esperando a que directGeo esté disponible...');
+                document.getElementById('geoDataDisplay').textContent = 'Esperando inicialización del sistema...';
+                
+                // Intentar de nuevo en 500ms
+                setTimeout(displayGeoData, 500);
+                return;
+            }
+            
+            console.log('DEBUG - directGeo disponible, iniciando obtención de datos');
+            
+            // Usar direct_geo.js para obtener los datos
+            window.directGeo.getClientIP()
+                .then(ip => {
+                    
+                    return window.directGeo.getGeoData(ip);
+                })
+                .then(data => {
+                    
+                    
+                    // Crear una copia de los datos para mostrar solo lo necesario
+                    const displayData = {};
+                    
+                    // Añadir solo las propiedades que existen
+                    if (data.ip) displayData.ip = data.ip;
+                    if (data.country) displayData.country = data.country;
+                    if (data.country_code) displayData.country_code = data.country_code;
+                    if (data.city) displayData.city = data.city;
+                    if (data.continent) displayData.continent = data.continent;
+                    if (data.time_zone) displayData.time_zone = data.time_zone;
+                    if (data.privacy) displayData.privacy = data.privacy;
+                    if (data.access_allowed !== undefined) displayData.access_allowed = data.access_allowed;
+                    if (data.access_decision_reason) displayData.access_decision_reason = data.access_decision_reason;
+                    
+                    document.getElementById('geoDataDisplay').textContent = JSON.stringify(displayData, null, 2);
+                    
+                    // Mostrar información de acceso
+                    const accessInfo = document.getElementById('accessInfo');
+                    const accessStatus = document.getElementById('accessStatus');
+                    const accessReason = document.getElementById('accessReason');
+                    
+                    if (data.access_allowed !== undefined) {
+                        accessInfo.style.display = 'block';
+                        
+                        if (data.access_allowed) {
+                            accessStatus.textContent = '✅ Acceso Permitido';
+                            accessInfo.style.borderLeftColor = '#2ecc71';
+                        } else {
+                            accessStatus.textContent = '❌ Acceso Denegado';
+                            accessInfo.style.borderLeftColor = '#e74c3c';
+                        }
+                        
+                        if (data.access_decision_reason) {
+                            accessReason.textContent = 'Razón: ' + data.access_decision_reason;
+                        } else {
+                            accessReason.textContent = 'Verificando acceso con la configuración actual...';
+                        }
+                    } else {
+                        accessInfo.style.display = 'none';
+                    }
+                    
+                    // Mostrar todas las IPs almacenadas en caché
+                    try {
+                        displayCachedIPs();
+                    } catch (cacheError) {
+                        
+                    }
+                })
+                .catch(error => {
+                    
+                    document.getElementById('geoDataDisplay').textContent = 'Error al obtener datos: ' + error.message;
+                });
+        }
+        
+        // Función para mostrar todas las IPs almacenadas en caché
+        function displayCachedIPs() {
+            const cachedIPsContainer = document.getElementById('cachedIPs');
+            cachedIPsContainer.innerHTML = '';
+            
+            // Verificar si window.directGeo está disponible
+            if (typeof window.directGeo === 'undefined') {
+                cachedIPsContainer.innerHTML = '<p>Sistema aún inicializándose...</p>';
+                return;
+            }
+            
+            let cachedIPs;
+            try {
+                cachedIPs = window.directGeo.getAllCachedIPs();
+                
+                if (!cachedIPs || cachedIPs.length === 0) {
+                    cachedIPsContainer.innerHTML = '<p>No hay IPs almacenadas en caché.</p>';
+                    return;
+                }
+            } catch (e) {
+                cachedIPsContainer.innerHTML = '<p>Error al obtener IPs en caché: ' + e.message + '</p>';
+                return;
+            }
+            
+            // Crear tabla para mostrar las IPs
+            const table = document.createElement('table');
+            table.style.width = '100%';
+            table.style.borderCollapse = 'collapse';
+            table.style.marginTop = '10px';
+            
+            // Crear encabezado de la tabla
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            
+            ['IP', 'País', 'Código', 'Fecha de Caché'].forEach(text => {
+                const th = document.createElement('th');
+                th.textContent = text;
+                th.style.padding = '8px';
+                th.style.textAlign = 'left';
+                th.style.borderBottom = '2px solid #ddd';
+                headerRow.appendChild(th);
+            });
+            
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+            
+            // Crear cuerpo de la tabla
+            const tbody = document.createElement('tbody');
+            
+            cachedIPs.forEach(ipData => {
+                const row = document.createElement('tr');
+                
+                // IP
+                const ipCell = document.createElement('td');
+                ipCell.textContent = ipData.ip;
+                ipCell.style.padding = '8px';
+                ipCell.style.borderBottom = '1px solid #ddd';
+                row.appendChild(ipCell);
+                
+                // País
+                const countryCell = document.createElement('td');
+                countryCell.textContent = ipData.country;
+                countryCell.style.padding = '8px';
+                countryCell.style.borderBottom = '1px solid #ddd';
+                row.appendChild(countryCell);
+                
+                // Código de país
+                const codeCell = document.createElement('td');
+                codeCell.textContent = ipData.country_code;
+                codeCell.style.padding = '8px';
+                codeCell.style.borderBottom = '1px solid #ddd';
+                row.appendChild(codeCell);
+                
+                // Fecha
+                const dateCell = document.createElement('td');
+                dateCell.textContent = new Date(ipData.timestamp).toLocaleString();
+                dateCell.style.padding = '8px';
+                dateCell.style.borderBottom = '1px solid #ddd';
+                row.appendChild(dateCell);
+                
+                tbody.appendChild(row);
+            });
+            
+            table.appendChild(tbody);
+            cachedIPsContainer.appendChild(table);
+        }
+        
+        // Botón para recargar los datos
+        document.getElementById('reloadData').addEventListener('click', function() {
+            // Recargar la página
+            window.location.reload();
+        });
+        
+        // Botón para limpiar el caché
+        document.getElementById('clearCache').addEventListener('click', function() {
+            // Limpiar localStorage
+            localStorage.clear();
+            
+            // Mostrar mensaje
+            alert('Caché limpiado correctamente. Se recargará la página para obtener datos frescos.');
+            
+            // Recargar la página
+            window.location.reload();
+        });
+        
+        // Botón para forzar actualización
+        document.getElementById('forceRefresh').addEventListener('click', function() {
+            // Añadir parámetro force_refresh=true a la URL
+            const url = new URL(window.location.href);
+            url.searchParams.set('force_refresh', 'true');
+            
+            // Mostrar mensaje
+            alert('Forzando actualización de datos geográficos ignorando la caché...');
+            
+            // Recargar la página con el parámetro
+            window.location.href = url.toString();
+        });
+        
+        // Mostrar datos cuando la página esté completamente cargada
+        window.addEventListener('load', function() {
+            console.log('DEBUG - Página cargada, esperando un poco antes de inicializar geolocalización');
+            // Esperar un poco para que el script direct_geo.js termine de inicializarse
+            setTimeout(displayGeoData, 1000);
+        });
+    </script>
+</body>
+</html>

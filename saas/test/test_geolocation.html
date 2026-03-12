@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Prueba de Geolocalización SaaS - ZipGeo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .test-info {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .status-card {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .status-card h3 {
+            margin-bottom: 15px;
+            color: #fff;
+            font-size: 1.2rem;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-loading {
+            background: #ffc107;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-success {
+            background: #28a745;
+        }
+
+        .status-error {
+            background: #dc3545;
+        }
+
+        .status-blocked {
+            background: #fd7e14;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .config-display {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .test-scenarios {
+            margin-top: 30px;
+        }
+
+        .scenario {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid;
+        }
+
+        .scenario.allowed {
+            border-left-color: #28a745;
+        }
+
+        .scenario.blocked {
+            border-left-color: #dc3545;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .logs {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 5px;
+            border-radius: 4px;
+        }
+
+        .log-info {
+            background: rgba(23, 162, 184, 0.2);
+            border-left: 3px solid #17a2b8;
+        }
+
+        .log-success {
+            background: rgba(40, 167, 69, 0.2);
+            border-left: 3px solid #28a745;
+        }
+
+        .log-error {
+            background: rgba(220, 53, 69, 0.2);
+            border-left: 3px solid #dc3545;
+        }
+
+        .log-warning {
+            background: rgba(255, 193, 7, 0.2);
+            border-left: 3px solid #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Prueba de Geolocalización SaaS</h1>
+        
+        <div class="test-info">
+            <h2>🎯 Configuración de Prueba</h2>
+            <p><strong>Cliente ID:</strong> 59f299a8a3dd1e28ac520b35c00a7169</p>
+            <p><strong>Modo:</strong> Lista Blanca (solo países permitidos)</p>
+            <p><strong>Países Permitidos:</strong> 🇪🇨 Ecuador, 🇨🇴 Colombia, 🇵🇪 Perú</p>
+            <p><strong>VPN:</strong> ✅ Permitido | <strong>Tor:</strong> ❌ Bloqueado | <strong>Proxy:</strong> ❌ Bloqueado</p>
+        </div>
+
+        <div class="status-grid">
+            <div class="status-card">
+                <h3>🌍 Estado de Geolocalización</h3>
+                <div id="geo-status">
+                    <span class="status-indicator status-loading"></span>
+                    <span>Obteniendo ubicación...</span>
+                </div>
+                <div id="location-info"></div>
+            </div>
+
+            <div class="status-card">
+                <h3>🔐 Estado de Acceso</h3>
+                <div id="access-status">
+                    <span class="status-indicator status-loading"></span>
+                    <span>Verificando acceso...</span>
+                </div>
+                <div id="access-info"></div>
+            </div>
+
+            <div class="status-card">
+                <h3>⚙️ Configuración ZipGeo</h3>
+                <div id="config-status">
+                    <span class="status-indicator status-loading"></span>
+                    <span>Cargando configuración...</span>
+                </div>
+                <div id="config-info"></div>
+            </div>
+
+            <div class="status-card">
+                <h3>📊 Información Técnica</h3>
+                <div id="tech-info">
+                    <div><strong>User Agent:</strong> <span id="user-agent"></span></div>
+                    <div><strong>Timestamp:</strong> <span id="timestamp"></span></div>
+                    <div><strong>URL:</strong> <span id="current-url"></span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-scenarios">
+            <h2>🧪 Escenarios de Prueba</h2>
+            
+            <div class="scenario allowed">
+                <h4>✅ Países que DEBEN permitir acceso:</h4>
+                <p>🇪🇨 Ecuador (EC) | 🇨🇴 Colombia (CO) | 🇵🇪 Perú (PE)</p>
+            </div>
+
+            <div class="scenario blocked">
+                <h4>❌ Países que DEBEN bloquear acceso:</h4>
+                <p>🇺🇸 Estados Unidos (US) | 🇷🇺 Rusia (RU) | 🇨🇳 China (CN) | 🇦🇷 Argentina (AR) | Cualquier otro país</p>
+            </div>
+        </div>
+
+        <div>
+            <h3>🔧 Controles de Prueba</h3>
+            <button class="btn" onclick="testZipGeoAPI()">🔄 Refrescar Test</button>
+            <button class="btn" onclick="simulateBlocked()">🚫 Simular Bloqueo</button>
+            <button class="btn" onclick="showRawConfig()">📋 Ver Configuración Raw</button>
+            <button class="btn" onclick="clearLogs()">🗑️ Limpiar Logs</button>
+        </div>
+
+        <div class="logs" id="logs">
+            <div class="log-entry log-info">
+                <strong>[INFO]</strong> Sistema de prueba iniciado - esperando ZipGeo...
+            </div>
+        </div>
+    </div>
+
+    <!-- 🚀 AQUÍ SE INCLUYE EL SCRIPT DEL SAAS -->
+    <script src="https://validatumail.cc/saas/api/v1/client_script.php?client=59f299a8a3dd1e28ac520b35c00a7169"></script>
+
+    <script>
+        // Variables globales para el test
+        let testInterval;
+        let startTime = new Date();
+
+        // Función para agregar logs
+        function addLog(message, type = 'info') {
+            const logs = document.getElementById('logs');
+            const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.innerHTML = `<strong>[${timestamp}] [${type.toUpperCase()}]</strong> ${message}`;
+            logs.appendChild(logEntry);
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        // Función para actualizar estado
+        function updateStatus(elementId, status, message, info = '') {
+            const element = document.getElementById(elementId);
+            const indicator = element.querySelector('.status-indicator');
+            const text = element.querySelector('span:last-child');
+            
+            // Remover clases anteriores
+            indicator.classList.remove('status-loading', 'status-success', 'status-error', 'status-blocked');
+            indicator.classList.add(`status-${status}`);
+            text.textContent = message;
+
+            // Agregar información adicional si existe
+            if (info && elementId.includes('-status')) {
+                const infoElement = document.getElementById(elementId.replace('-status', '-info'));
+                if (infoElement) {
+                    infoElement.innerHTML = info;
+                }
+            }
+        }
+
+        // Inicializar información técnica
+        function initTechInfo() {
+            document.getElementById('user-agent').textContent = navigator.userAgent.substring(0, 50) + '...';
+            document.getElementById('timestamp').textContent = new Date().toLocaleString();
+            document.getElementById('current-url').textContent = window.location.href;
+        }
+
+        // Test principal
+        function testZipGeoAPI() {
+            addLog('Iniciando test de ZipGeo API...', 'info');
+            
+            // Verificar si ZipGeo está disponible
+            if (typeof window.ZipGeo === 'undefined') {
+                addLog('❌ ZipGeo no encontrado - verificando script...', 'error');
+                updateStatus('config-status', 'error', 'ZipGeo no cargado');
+                return;
+            }
+
+            addLog('✅ ZipGeo encontrado - verificando estado...', 'success');
+            updateStatus('config-status', 'success', 'ZipGeo cargado');
+
+            // Verificar si está listo
+            if (!window.ZipGeo.isReady()) {
+                addLog('⏳ ZipGeo aún no está listo - esperando...', 'warning');
+                setTimeout(testZipGeoAPI, 1000);
+                return;
+            }
+
+            addLog('🚀 ZipGeo está listo - obteniendo información...', 'success');
+
+            // Obtener configuración
+            const config = window.ZipGeo.getConfig();
+            if (config) {
+                addLog('📋 Configuración obtenida exitosamente', 'success');
+                updateStatus('config-status', 'success', 'Configuración cargada', 
+                    `<div class="config-display">${JSON.stringify(config, null, 2)}</div>`);
+            }
+
+            // Obtener ubicación
+            const location = window.ZipGeo.getUserLocation();
+            if (location) {
+                addLog(`🌍 Ubicación detectada: ${location.country_name} (${location.country})`, 'success');
+                updateStatus('geo-status', 'success', 'Ubicación obtenida', 
+                    `<strong>País:</strong> ${location.country_name} (${location.country})<br>
+                     <strong>Ciudad:</strong> ${location.city}<br>
+                     <strong>IP:</strong> ${location.ip}<br>
+                     <strong>VPN:</strong> ${location.is_vpn ? 'Sí' : 'No'}<br>
+                     <strong>Proxy:</strong> ${location.is_proxy ? 'Sí' : 'No'}`);
+            }
+
+            // Verificar acceso
+            const accessGranted = window.ZipGeo.isAccessGranted();
+            if (accessGranted) {
+                addLog('✅ Acceso PERMITIDO - país en lista blanca', 'success');
+                updateStatus('access-status', 'success', 'Acceso Permitido', 
+                    `<strong>Resultado:</strong> ✅ PERMITIDO<br>
+                     <strong>Razón:</strong> País en lista de países permitidos<br>
+                     <strong>Configuración:</strong> Lista Blanca activa`);
+            } else {
+                addLog('❌ Acceso DENEGADO - país bloqueado', 'error');
+                updateStatus('access-status', 'blocked', 'Acceso Denegado', 
+                    `<strong>Resultado:</strong> ❌ DENEGADO<br>
+                     <strong>Razón:</strong> País no está en lista de permitidos<br>
+                     <strong>Acción:</strong> Mostrar mensaje de bloqueo`);
+            }
+
+            addLog('🏁 Test completado exitosamente', 'success');
+        }
+
+        // Simular bloqueo
+        function simulateBlocked() {
+            addLog('🧪 Simulando escenario de bloqueo...', 'warning');
+            updateStatus('access-status', 'blocked', 'Simulación: Bloqueado', 
+                `<strong>Simulación Activa</strong><br>
+                 <strong>Escenario:</strong> País no permitido<br>
+                 <strong>Acción:</strong> Mostrar mensaje de bloqueo`);
+        }
+
+        // Mostrar configuración raw
+        function showRawConfig() {
+            if (typeof window.ZipGeo !== 'undefined') {
+                const config = window.ZipGeo.getConfig();
+                addLog('📋 Configuración Raw: ' + JSON.stringify(config), 'info');
+            } else {
+                addLog('❌ ZipGeo no disponible para mostrar configuración', 'error');
+            }
+        }
+
+        // Limpiar logs
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '<div class="log-entry log-info"><strong>[INFO]</strong> Logs limpiados</div>';
+        }
+
+        // Monitoreo continuo
+        function startMonitoring() {
+            testInterval = setInterval(() => {
+                if (typeof window.ZipGeo !== 'undefined' && window.ZipGeo.isReady()) {
+                    testZipGeoAPI();
+                    clearInterval(testInterval);
+                }
+            }, 1000);
+        }
+
+        // Inicializar cuando el DOM esté listo
+        document.addEventListener('DOMContentLoaded', function() {
+            addLog('🌟 Sistema de prueba inicializado', 'success');
+            initTechInfo();
+            startMonitoring();
+            
+            // Test inicial después de 2 segundos
+            setTimeout(() => {
+                testZipGeoAPI();
+            }, 2000);
+        });
+
+        // Monitor de errores
+        window.addEventListener('error', function(e) {
+            addLog(`❌ Error JavaScript: ${e.message}`, 'error');
+        });
+
+        // Monitor de carga de script ZipGeo
+        window.addEventListener('load', function() {
+            addLog('📄 Página cargada completamente', 'info');
+            setTimeout(testZipGeoAPI, 3000);
+        });
+    </script>
+</body>
+</html>

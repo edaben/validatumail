@@ -1,0 +1,4 @@
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([a-f0-9]{32})\.js$ ../api/v1/client_script.php?client=$1 [L,QSA]
