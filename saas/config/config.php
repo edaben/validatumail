@@ -8,10 +8,13 @@
 
 // Configuración del sitio
 define('SAAS_SITE_NAME', 'GeoControl SaaS');
-$protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
-$host = $_SERVER['HTTP_HOST'] ?? 'validatumail.cc';
-$default_url = $protocol . "://" . $host;
-$base_url = getenv('SERVER_URL') ?: $default_url;
+$protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ? "https" : "http";
+
+if (isset($_SERVER['HTTP_HOST'])) {
+    $base_url = $protocol . "://" . $_SERVER['HTTP_HOST'];
+} else {
+    $base_url = getenv('SERVER_URL') ?: "https://validatumail.cc";
+}
 
 define('SAAS_SITE_URL', rtrim($base_url, '/') . '/saas');
 define('SAAS_VERSION', '1.0.0');
